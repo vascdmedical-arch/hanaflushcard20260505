@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 英単語フラッシュカード</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 18px 14px 32px;
+  }
+  h1 { color:#fff; font-size:23px; font-weight:900; letter-spacing:2px; margin:0 0 12px; text-shadow:0 2px 8px rgba(0,0,0,.2); }
+
+  /* モード切り替え */
+  #modeToggle {
+    display:flex; align-items:center;
+    background:rgba(255,255,255,.15); border-radius:32px; padding:4px; margin-bottom:12px;
+    border:2px solid rgba(255,255,255,.35);
+  }
+  #modeToggle button {
+    padding:7px 16px; border-radius:26px; border:none; cursor:pointer;
+    font-weight:800; font-size:13px; transition:all .2s; background:transparent;
+    color:rgba(255,255,255,.85);
+  }
+  #modeToggle button.active { background:#fff; color:#764ba2; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+
+  /* カテゴリ */
+  #categories { display:flex; gap:7px; flex-wrap:wrap; justify-content:center; margin-bottom:12px; }
+  #categories button {
+    padding:5px 13px; border-radius:18px; border:none; cursor:pointer;
+    font-size:12px; font-weight:700; transition:all .2s;
+    background:rgba(255,255,255,.2); color:#fff;
+  }
+  #categories button.active { background:#fff; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+
+  /* 進捗 */
+  #progressWrap { width:100%; max-width:420px; margin-bottom:10px; }
+  #progressLabels { display:flex; justify-content:space-between; margin-bottom:4px; }
+  #progressLabels span { color:rgba(255,255,255,.85); font-size:12px; }
+  #progressBar { height:6px; background:rgba(255,255,255,.25); border-radius:3px; }
+  #progressFill { height:100%; border-radius:3px; background:#fff; transition:width .3s; }
+
+  /* カード */
+  #card {
+    width:100%; max-width:420px;
+    border-radius:22px; box-shadow:0 8px 32px rgba(0,0,0,.18);
+    padding:26px 20px 20px; margin-bottom:14px;
+    position:relative; transition:background .3s, border .3s;
+  }
+  #categoryBadge {
+    position:absolute; top:12px; left:14px;
+    color:#fff; border-radius:12px; font-size:11px; font-weight:700; padding:2px 10px;
+  }
+  #masterBtn {
+    position:absolute; top:8px; right:12px;
+    border:none; border-radius:20px; cursor:pointer;
+    font-size:18px; padding:4px 10px; transition:all .2s;
+    background:rgba(0,0,0,.08);
+  }
+  #masterBtn.mastered { background:#FFD700; box-shadow:0 2px 8px rgba(255,215,0,.5); }
+
+  #frontArea { text-align:center; margin:24px 0 6px; }
+  #frontLabel { font-size:11px; color:#888; margin-bottom:6px; letter-spacing:1px; }
+  #frontText { font-weight:900; color:#333; line-height:1.25; word-break:break-word; }
+
+  #speakBtn {
+    margin-top:12px; border-radius:22px; cursor:pointer;
+    padding:6px 18px; font-size:14px; font-weight:700;
+    display:inline-flex; align-items:center; gap:5px; transition:all .2s;
+    background:rgba(0,0,0,.07);
+  }
+  #speakBtn.speaking { transform:scale(1.06); color:#fff; }
+
+  #divider { border-top:2px dashed; margin:14px 0 12px; }
+
+  #backLabel { font-size:11px; color:#888; margin-bottom:8px; letter-spacing:1px; }
+  #inputRow { display:flex; gap:8px; }
+  #answerInput {
+    flex:1; padding:10px 13px; border-radius:12px; border:2px solid;
+    font-size:16px; outline:none; color:#333; transition:border .2s, background .2s;
+    font-family:inherit;
+  }
+  #checkBtn {
+    padding:10px 15px; border-radius:12px; border:none;
+    color:#fff; font-weight:800; font-size:14px; cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,.12); white-space:nowrap;
+  }
+
+  #resultBox {
+    display:none; margin-top:11px; border-radius:10px; padding:10px 14px;
+    border:2px solid; align-items:center; gap:10px;
+  }
+  #resultBox.show { display:flex; }
+  #resultEmoji { font-size:22px; }
+  #resultText { flex:1; }
+  #resultTitle { font-weight:800; font-size:15px; }
+  #resultAnswer { font-size:13px; color:#555; margin-top:2px; }
+  #speakBtnSmall {
+    border:none; border-radius:14px; color:#fff; font-size:15px; cursor:pointer; padding:3px 10px;
+  }
+
+  #showAnswerBtn {
+    margin-top:9px; background:none; border:none;
+    font-size:13px; cursor:pointer; text-decoration:underline; padding:0;
+  }
+  #answerHint {
+    display:none; margin-top:7px; padding:8px 14px;
+    border-radius:10px; font-size:16px; font-weight:700; color:#333;
+    align-items:center; justify-content:space-between;
+  }
+  #answerHint.show { display:flex; }
+  #speakBtnHint {
+    border:none; border-radius:14px; color:#fff; font-size:15px; cursor:pointer; padding:3px 10px;
+  }
+
+  /* ナビゲーション */
+  #navRow { display:flex; gap:12px; margin-bottom:10px; }
+  #navRow button, #randomBtn {
+    padding:10px 22px; border-radius:12px;
+    background:rgba(255,255,255,.2); color:#fff;
+    border:2px solid rgba(255,255,255,.4); cursor:pointer; font-size:20px; font-weight:700;
+  }
+  #randomBtn { padding:7px 22px; border-radius:20px; font-size:13px; }
+  #hint { color:rgba(255,255,255,.4); font-size:11px; margin-top:14px; text-align:center; }
+</style>
+</head>
+<body>
+
+<h1>📚 英単語フラッシュカード</h1>
+
+<div id="modeToggle">
+  <button id="btnJaEn" class="active" onclick="setMode('ja-en')">🇯🇵 → 🇺🇸　日→英</button>
+  <button id="btnEnJa" onclick="setMode('en-ja')">🇺🇸 → 🇯🇵　英→日</button>
+</div>
+
+<div id="categories"></div>
+
+<div id="progressWrap">
+  <div id="progressLabels">
+    <span id="progressCount"></span>
+    <span id="masteredCount"></span>
+  </div>
+  <div id="progressBar"><div id="progressFill"></div></div>
+</div>
+
+<div id="card">
+  <span id="categoryBadge"></span>
+  <button id="masterBtn" onclick="toggleMastered()">☆</button>
+
+  <div id="frontArea">
+    <div id="frontLabel"></div>
+    <div id="frontText"></div>
+    <button id="speakBtn" onclick="handleSpeak()">🔊 発音を聞く</button>
+  </div>
+
+  <div id="divider"></div>
+
+  <div>
+    <div id="backLabel"></div>
+    <div id="inputRow">
+      <input id="answerInput" type="text" placeholder="" onkeydown="handleKeyDown(event)" oninput="handleInput()">
+      <button id="checkBtn" onclick="handleCheck()">確認</button>
+    </div>
+
+    <div id="resultBox">
+      <span id="resultEmoji"></span>
+      <div id="resultText">
+        <div id="resultTitle"></div>
+        <div id="resultAnswer"></div>
+      </div>
+      <button id="speakBtnSmall" onclick="handleSpeak()">🔊</button>
+    </div>
+
+    <button id="showAnswerBtn" onclick="toggleShowAnswer()">答えを見る</button>
+    <div id="answerHint">
+      <span id="hintText"></span>
+      <button id="speakBtnHint" onclick="handleSpeak()">🔊</button>
+    </div>
+  </div>
+</div>
+
+<div id="navRow">
+  <button onclick="goPrev()">◀</button>
+  <button onclick="goNext()">▶</button>
+</div>
+<button id="randomBtn" onclick="goRandom()">🔀 ランダム</button>
+<p id="hint">☆でマスター済み ｜ Enterで確認→次へ ｜ 🔊で英語の発音を再生</p>
+
+<script>
+const cards = [
+  { ja:"1月", en:"January", category:"月" },
+  { ja:"2月", en:"February", category:"月" },
+  { ja:"3月", en:"March", category:"月" },
+  { ja:"4月", en:"April", category:"月" },
+  { ja:"5月", en:"May", category:"月" },
+  { ja:"6月", en:"June", category:"月" },
+  { ja:"7月", en:"July", category:"月" },
+  { ja:"8月", en:"August", category:"月" },
+  { ja:"9月", en:"September", category:"月" },
+  { ja:"10月", en:"October", category:"月" },
+  { ja:"11月", en:"November", category:"月" },
+  { ja:"12月", en:"December", category:"月" },
+  { ja:"1", en:"One", category:"数字" },
+  { ja:"2", en:"Two", category:"数字" },
+  { ja:"3", en:"Three", category:"数字" },
+  { ja:"4", en:"Four", category:"数字" },
+  { ja:"5", en:"Five", category:"数字" },
+  { ja:"6", en:"Six", category:"数字" },
+  { ja:"7", en:"Seven", category:"数字" },
+  { ja:"8", en:"Eight", category:"数字" },
+  { ja:"9", en:"Nine", category:"数字" },
+  { ja:"10", en:"Ten", category:"数字" },
+  { ja:"11", en:"Eleven", category:"数字" },
+  { ja:"12", en:"Twelve", category:"数字" },
+  { ja:"13", en:"Thirteen", category:"数字" },
+  { ja:"14", en:"Fourteen", category:"数字" },
+  { ja:"15", en:"Fifteen", category:"数字" },
+  { ja:"16", en:"Sixteen", category:"数字" },
+  { ja:"17", en:"Seventeen", category:"数字" },
+  { ja:"18", en:"Eighteen", category:"数字" },
+  { ja:"19", en:"Nineteen", category:"数字" },
+  { ja:"20", en:"Twenty", category:"数字" },
+  { ja:"21", en:"Twenty-one", category:"数字" },
+  { ja:"22", en:"Twenty-two", category:"数字" },
+  { ja:"23", en:"Twenty-three", category:"数字" },
+  { ja:"24", en:"Twenty-four", category:"数字" },
+  { ja:"25", en:"Twenty-five", category:"数字" },
+  { ja:"26", en:"Twenty-six", category:"数字" },
+  { ja:"27", en:"Twenty-seven", category:"数字" },
+  { ja:"28", en:"Twenty-eight", category:"数字" },
+  { ja:"29", en:"Twenty-nine", category:"数字" },
+  { ja:"30", en:"Thirty", category:"数字" },
+  { ja:"40", en:"Forty", category:"数字" },
+  { ja:"50", en:"Fifty", category:"数字" },
+  { ja:"60", en:"Sixty", category:"数字" },
+  { ja:"70", en:"Seventy", category:"数字" },
+  { ja:"80", en:"Eighty", category:"数字" },
+  { ja:"90", en:"Ninety", category:"数字" },
+  { ja:"100", en:"One hundred", category:"数字" },
+  { ja:"101", en:"One hundred and one", category:"数字" },
+  { ja:"赤", en:"Red", category:"色" },
+  { ja:"青", en:"Blue", category:"色" },
+  { ja:"黄色", en:"Yellow", category:"色" },
+  { ja:"緑", en:"Green", category:"色" },
+  { ja:"白", en:"White", category:"色" },
+  { ja:"黒", en:"Black", category:"色" },
+  { ja:"紫", en:"Purple", category:"色" },
+  { ja:"オレンジ", en:"Orange", category:"色" },
+  { ja:"ピンク", en:"Pink", category:"色" },
+  { ja:"茶色", en:"Brown", category:"色" },
+  { ja:"灰色", en:"Gray", category:"色" },
+  { ja:"月曜日", en:"Monday", category:"曜日" },
+  { ja:"火曜日", en:"Tuesday", category:"曜日" },
+  { ja:"水曜日", en:"Wednesday", category:"曜日" },
+  { ja:"木曜日", en:"Thursday", category:"曜日" },
+  { ja:"金曜日", en:"Friday", category:"曜日" },
+  { ja:"土曜日", en:"Saturday", category:"曜日" },
+  { ja:"日曜日", en:"Sunday", category:"曜日" },
+];
+
+const categoryColors = {
+  月:    { bg:"#e8f4fd", accent:"#2196F3", light:"#bbdefb" },
+  数字:  { bg:"#fff8e1", accent:"#FF8F00", light:"#ffe082" },
+  色:    { bg:"#fce4ec", accent:"#E91E63", light:"#f8bbd0" },
+  曜日:  { bg:"#e8f5e9", accent:"#43A047", light:"#c8e6c9" },
+  すべて:{ bg:"#f3e5f5", accent:"#8E24AA", light:"#e1bee7" },
+};
+
+let selectedCategory = "すべて";
+let currentIndex = 0;
+let mode = "ja-en";
+let mastered = {};
+let result = null;
+let showAnswer = false;
+let speaking = false;
+
+function getFiltered() {
+  return selectedCategory === "すべて" ? cards : cards.filter(c => c.category === selectedCategory);
+}
+function getCard() { return getFiltered()[currentIndex] || getFiltered()[0]; }
+
+// ---------- TTS ----------
+function playTTS(text) {
+  const url = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=en-US&client=gtx&q=${encodeURIComponent(text)}`;
+  const audio = new Audio(url);
+  audio.volume = 1.0;
+  const p = audio.play();
+  if (p !== undefined) {
+    p.then(() => { audio.onended = () => { speaking = false; render(); }; })
+     .catch(() => {
+       if (window.speechSynthesis) {
+         window.speechSynthesis.cancel();
+         const utter = new SpeechSynthesisUtterance(text);
+         utter.lang = "en-US"; utter.rate = 0.88;
+         utter.onend = () => { speaking = false; render(); };
+         utter.onerror = () => { speaking = false; render(); };
+         window.speechSynthesis.speak(utter);
+       } else { speaking = false; render(); }
+     });
+  }
+}
+
+function handleSpeak() {
+  if (speaking) return;
+  speaking = true;
+  render();
+  playTTS(getCard().en);
+  setTimeout(() => { speaking = false; render(); }, 6000);
+}
+
+// ---------- ロジック ----------
+function setMode(m) { mode = m; resetCard(); render(); }
+function setCategory(cat) { selectedCategory = cat; currentIndex = 0; resetCard(); render(); }
+function resetCard() { result = null; showAnswer = false; document.getElementById('answerInput').value = ''; }
+function goNext() { const f = getFiltered(); currentIndex = (currentIndex + 1) % f.length; resetCard(); render(); }
+function goPrev() { const f = getFiltered(); currentIndex = (currentIndex - 1 + f.length) % f.length; resetCard(); render(); }
+function goRandom() { currentIndex = Math.floor(Math.random() * getFiltered().length); resetCard(); render(); }
+
+function handleInput() { result = null; showAnswer = false; render(); }
+
+function handleCheck() {
+  const input = document.getElementById('answerInput').value.trim();
+  if (!input) return;
+  const isJaEn = mode === 'ja-en';
+  const correct = isJaEn ? getCard().en : getCard().ja;
+  const normalize = s => s.toLowerCase().replace(/[-\s]+/g, ' ').trim();
+  result = normalize(input) === normalize(correct) ? 'correct' : 'wrong';
+  render();
+}
+
+function handleKeyDown(e) {
+  if (e.key === 'Enter') {
+    if (result) { goNext(); }
+    else { handleCheck(); }
+  }
+}
+
+function toggleMastered() {
+  const key = `${selectedCategory}-${currentIndex}`;
+  mastered[key] = !mastered[key];
+  render();
+}
+
+function toggleShowAnswer() {
+  showAnswer = !showAnswer;
+  render();
+}
+
+// ---------- 描画 ----------
+function render() {
+  const filtered = getFiltered();
+  const card = getCard();
+  const colors = categoryColors[card.category] || categoryColors['すべて'];
+  const isJaEn = mode === 'ja-en';
+  const frontText = isJaEn ? card.ja : card.en;
+  const frontFlag = isJaEn ? '🇯🇵' : '🇺🇸';
+  const frontLabel = isJaEn ? '日本語（表）' : '英語（表）';
+  const backFlag = isJaEn ? '🇺🇸' : '🇯🇵';
+  const backLabel = isJaEn ? '英語を入力（裏）' : '日本語を入力（裏）';
+  const backPlaceholder = isJaEn ? '英語を入力...' : '日本語を入力...';
+  const correctAnswer = isJaEn ? card.en : card.ja;
+  const masteredKey = `${selectedCategory}-${currentIndex}`;
+  const isMastered = !!mastered[masteredKey];
+  const masteredCount = filtered.filter((_, i) => mastered[`${selectedCategory}-${i}`]).length;
+
+  // モードボタン
+  document.getElementById('btnJaEn').className = mode === 'ja-en' ? 'active' : '';
+  document.getElementById('btnEnJa').className = mode === 'en-ja' ? 'active' : '';
+
+  // カテゴリボタン
+  const cats = ['すべて','月','数字','色','曜日'];
+  const catDiv = document.getElementById('categories');
+  catDiv.innerHTML = '';
+  cats.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.textContent = cat;
+    btn.className = selectedCategory === cat ? 'active' : '';
+    if (selectedCategory === cat) btn.style.color = categoryColors[cat]?.accent || '#764ba2';
+    btn.onclick = () => setCategory(cat);
+    catDiv.appendChild(btn);
+  });
+
+  // 進捗
+  document.getElementById('progressCount').textContent = `${currentIndex + 1} / ${filtered.length}枚`;
+  document.getElementById('masteredCount').textContent = `✅ マスター: ${masteredCount}/${filtered.length}`;
+  document.getElementById('progressFill').style.width = `${((currentIndex+1)/filtered.length)*100}%`;
+
+  // カード背景
+  const cardEl = document.getElementById('card');
+  cardEl.style.background = colors.bg;
+  cardEl.style.border = `3px solid ${colors.light}`;
+
+  // バッジ
+  document.getElementById('categoryBadge').textContent = card.category;
+  document.getElementById('categoryBadge').style.background = colors.accent;
+
+  // マスターボタン
+  const mBtn = document.getElementById('masterBtn');
+  mBtn.textContent = isMastered ? '⭐' : '☆';
+  mBtn.className = isMastered ? 'mastered' : '';
+
+  // 表面
+  document.getElementById('frontLabel').textContent = `${frontFlag} ${frontLabel}`;
+  const ftEl = document.getElementById('frontText');
+  ftEl.textContent = frontText;
+  ftEl.style.fontSize = frontText.length > 12 ? '28px' : frontText.length > 6 ? '40px' : '52px';
+
+  // 発音ボタン
+  const sb = document.getElementById('speakBtn');
+  sb.style.background = speaking ? colors.accent : 'rgba(0,0,0,.07)';
+  sb.style.border = `2px solid ${speaking ? colors.accent : colors.light}`;
+  sb.style.color = speaking ? '#fff' : colors.accent;
+  sb.textContent = speaking ? '🔊 再生中...' : '🔊 発音を聞く';
+
+  // 区切り線
+  document.getElementById('divider').style.borderColor = colors.light;
+
+  // 入力欄
+  document.getElementById('backLabel').textContent = `${backFlag} ${backLabel}`;
+  const inp = document.getElementById('answerInput');
+  inp.placeholder = backPlaceholder;
+  inp.style.borderColor = result === 'correct' ? '#43A047' : result === 'wrong' ? '#E53935' : colors.light;
+  inp.style.background = result === 'correct' ? '#e8f5e9' : result === 'wrong' ? '#ffebee' : '#fff';
+
+  // 確認ボタン
+  document.getElementById('checkBtn').style.background = colors.accent;
+
+  // 結果
+  const rb = document.getElementById('resultBox');
+  if (result) {
+    rb.className = 'show';
+    rb.style.background = result === 'correct' ? '#e8f5e9' : '#ffebee';
+    rb.style.borderColor = result === 'correct' ? '#43A047' : '#E53935';
+    document.getElementById('resultEmoji').textContent = result === 'correct' ? '🎉' : '❌';
+    document.getElementById('resultTitle').textContent = result === 'correct' ? '正解！' : '不正解...';
+    document.getElementById('resultTitle').style.color = result === 'correct' ? '#2e7d32' : '#c62828';
+    document.getElementById('resultAnswer').innerHTML = `正解: <strong>${correctAnswer}</strong>`;
+    document.getElementById('speakBtnSmall').style.background = colors.accent;
+  } else {
+    rb.className = '';
+  }
+
+  // 答えを見るボタン
+  const sab = document.getElementById('showAnswerBtn');
+  sab.style.color = colors.accent;
+  sab.style.display = result ? 'none' : 'block';
+  sab.textContent = showAnswer ? '答えを隠す' : '答えを見る';
+
+  // ヒント
+  const hint = document.getElementById('answerHint');
+  if (showAnswer && !result) {
+    hint.className = 'show';
+    hint.style.background = colors.light;
+    document.getElementById('hintText').textContent = `💡 ${correctAnswer}`;
+    document.getElementById('speakBtnHint').style.background = colors.accent;
+  } else {
+    hint.className = '';
+  }
+}
+
+// 初期描画
+render();
+// 入力欄にフォーカス
+document.getElementById('answerInput').focus();
+</script>
+</body>
+</html>
