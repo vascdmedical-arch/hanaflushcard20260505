@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 英単語フラッシュカード</title>
+<style>
+:root { --accent:#e94560; --teal:#00d4aa; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  min-height:100vh;
+  background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
+  font-family:'Helvetica Neue','Hiragino Kaku Gothic ProN',sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 12px 80px; color:#fff;
+}
+.app-title {
+  font-size:20px; font-weight:900; letter-spacing:3px; margin-bottom:3px;
+  background:linear-gradient(90deg,#e94560,#f5a623,#00d4aa);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.app-sub { font-size:11px; color:rgba(255,255,255,.4); margin-bottom:14px; letter-spacing:1px; }
+
+/* mode */
+.mode-row { display:flex; gap:0; margin-bottom:12px; background:rgba(255,255,255,.07); border-radius:28px; padding:3px; border:1px solid rgba(255,255,255,.12); }
+.mode-btn { padding:7px 14px; border-radius:24px; border:none; cursor:pointer; font-weight:700; font-size:12px; transition:all .25s; background:transparent; color:rgba(255,255,255,.6); white-space:nowrap; }
+.mode-btn.active { background:var(--accent); color:#fff; box-shadow:0 2px 12px rgba(233,69,96,.4); }
+
+/* categories */
+.cat-scroll { width:100%; max-width:480px; overflow-x:auto; margin-bottom:12px; scrollbar-width:none; }
+.cat-scroll::-webkit-scrollbar { display:none; }
+.cat-row { display:flex; gap:6px; width:max-content; padding:2px 0; }
+.cat-btn { padding:5px 12px; border-radius:16px; border:1.5px solid rgba(255,255,255,.2); cursor:pointer; font-size:11px; font-weight:700; transition:all .2s; background:transparent; color:rgba(255,255,255,.7); white-space:nowrap; }
+.cat-btn.active { color:#fff; border-color:transparent; }
+
+/* progress */
+.progress-wrap { width:100%; max-width:480px; margin-bottom:10px; }
+.progress-labels { display:flex; justify-content:space-between; margin-bottom:5px; }
+.progress-labels span { font-size:11px; color:rgba(255,255,255,.6); }
+.progress-track { height:4px; background:rgba(255,255,255,.15); border-radius:2px; }
+.progress-fill { height:100%; border-radius:2px; transition:width .35s; }
+
+/* card */
+.card { width:100%; max-width:480px; border-radius:20px; padding:24px 20px 18px; margin-bottom:14px; position:relative; box-shadow:0 16px 48px rgba(0,0,0,.4); transition:background .3s,border .3s; }
+.card-badge { position:absolute; top:14px; left:16px; border-radius:10px; font-size:10px; font-weight:800; padding:3px 10px; color:#fff; }
+.master-btn { position:absolute; top:10px; right:14px; border:none; border-radius:18px; cursor:pointer; font-size:17px; padding:4px 10px; transition:all .2s; background:rgba(0,0,0,.15); }
+.master-btn.on { background:rgba(245,166,35,.25); }
+.front-area { text-align:center; margin:26px 0 8px; }
+.front-label { font-size:10px; color:rgba(0,0,0,.4); margin-bottom:8px; letter-spacing:1px; font-weight:700; text-transform:uppercase; }
+.front-text { font-weight:900; color:#1a1a2e; line-height:1.2; word-break:break-word; }
+.speak-btn { margin-top:12px; border-radius:20px; cursor:pointer; padding:7px 18px; font-size:13px; font-weight:800; display:inline-flex; align-items:center; gap:6px; transition:all .2s; border:2px solid; }
+.divider { border:none; border-top:2px dashed; margin:14px 0 12px; opacity:.35; }
+.back-label { font-size:10px; color:rgba(0,0,0,.4); margin-bottom:8px; letter-spacing:1px; font-weight:700; text-transform:uppercase; }
+.input-row { display:flex; gap:8px; }
+.answer-input { flex:1; padding:11px 14px; border-radius:12px; border:2px solid; font-size:16px; outline:none; color:#1a1a2e; transition:border .2s,background .2s; font-family:inherit; font-weight:600; }
+.check-btn { padding:11px 16px; border-radius:12px; border:none; color:#fff; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap; }
+.result-box { display:none; margin-top:10px; border-radius:12px; padding:10px 14px; border:2px solid; align-items:center; gap:10px; }
+.result-box.show { display:flex; }
+.result-emoji { font-size:22px; }
+.result-info { flex:1; }
+.result-title { font-weight:800; font-size:14px; }
+.result-answer { font-size:12px; color:#555; margin-top:2px; }
+.speak-sm { border:none; border-radius:12px; color:#fff; font-size:14px; cursor:pointer; padding:4px 10px; font-weight:700; }
+.show-ans-btn { margin-top:9px; background:none; border:none; font-size:12px; cursor:pointer; text-decoration:underline; padding:0; font-weight:700; }
+.answer-hint { display:none; margin-top:7px; padding:9px 14px; border-radius:10px; font-size:15px; font-weight:800; color:#1a1a2e; align-items:center; justify-content:space-between; }
+.answer-hint.show { display:flex; }
+
+/* nav */
+.nav-row { display:flex; gap:10px; margin-bottom:10px; }
+.nav-btn { padding:10px 22px; border-radius:12px; background:rgba(255,255,255,.1); color:#fff; border:1.5px solid rgba(255,255,255,.25); cursor:pointer; font-size:18px; font-weight:700; }
+.random-btn { padding:7px 18px; border-radius:18px; background:rgba(255,255,255,.08); color:rgba(255,255,255,.8); border:1.5px solid rgba(255,255,255,.2); cursor:pointer; font-size:12px; font-weight:700; }
+
+.hint-text { color:rgba(255,255,255,.3); font-size:10px; margin-top:10px; text-align:center; letter-spacing:.5px; }
+
+/* custom word section */
+.custom-section { width:100%; max-width:480px; margin-top:12px; }
+.custom-toggle { background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.12); color:rgba(255,255,255,.6); border-radius:12px; padding:8px 16px; font-size:11px; font-weight:700; cursor:pointer; width:100%; letter-spacing:.5px; }
+.custom-list { display:none; margin-top:8px; background:rgba(255,255,255,.05); border-radius:14px; padding:12px; border:1px solid rgba(255,255,255,.1); max-height:240px; overflow-y:auto; }
+.custom-list.show { display:block; }
+.custom-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.07); font-size:13px; }
+.custom-item:last-child { border-bottom:none; }
+.custom-item-text { flex:1; }
+.custom-item-ja { font-weight:700; color:rgba(255,255,255,.9); font-size:13px; }
+.custom-item-en { font-size:11px; color:rgba(255,255,255,.4); }
+.custom-item-cat { font-size:10px; padding:2px 7px; border-radius:8px; color:#fff; font-weight:700; white-space:nowrap; }
+.del-btn { background:rgba(233,69,96,.15); border:none; border-radius:8px; color:var(--accent); font-size:12px; cursor:pointer; padding:4px 8px; font-weight:700; }
+.empty-msg { text-align:center; color:rgba(255,255,255,.3); font-size:12px; padding:12px 0; }
+
+/* FAB */
+.add-fab { position:fixed; bottom:22px; right:18px; width:52px; height:52px; border-radius:50%; background:var(--accent); color:#fff; border:none; font-size:26px; cursor:pointer; box-shadow:0 4px 20px rgba(233,69,96,.5); display:flex; align-items:center; justify-content:center; z-index:100; font-weight:300; line-height:1; }
+
+/* modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:200; align-items:center; justify-content:center; padding:20px; }
+.modal-overlay.show { display:flex; }
+.modal { background:#1a1a2e; border-radius:20px; padding:22px 18px; width:100%; max-width:400px; border:1px solid rgba(255,255,255,.12); box-shadow:0 24px 64px rgba(0,0,0,.6); }
+.modal h2 { font-size:16px; font-weight:900; margin-bottom:14px; letter-spacing:1px; background:linear-gradient(90deg,#e94560,#f5a623); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.modal label { font-size:10px; font-weight:700; color:rgba(255,255,255,.45); letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:5px; margin-top:11px; }
+.modal input,.modal select { width:100%; padding:10px 12px; border-radius:10px; border:1.5px solid rgba(255,255,255,.15); background:rgba(255,255,255,.07); color:#fff; font-size:14px; font-family:inherit; outline:none; }
+.modal input:focus,.modal select:focus { border-color:var(--accent); }
+.modal select option { background:#1a1a2e; color:#fff; }
+.new-cat-row { display:flex; gap:6px; margin-top:6px; }
+.new-cat-row input { flex:1; }
+.new-cat-row button { padding:10px 12px; border-radius:10px; border:none; background:var(--teal); color:#111; font-weight:800; font-size:12px; cursor:pointer; white-space:nowrap; }
+.modal-btns { display:flex; gap:8px; margin-top:16px; }
+.modal-save { flex:1; padding:11px; border-radius:12px; border:none; background:var(--accent); color:#fff; font-weight:800; font-size:14px; cursor:pointer; }
+.modal-cancel { padding:11px 16px; border-radius:12px; border:1.5px solid rgba(255,255,255,.2); background:transparent; color:rgba(255,255,255,.6); font-weight:700; font-size:13px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="app-title">FLASH CARDS</div>
+<div class="app-sub">英単語学習アプリ</div>
+
+<div class="mode-row">
+  <button class="mode-btn active" id="btnJaEn" onclick="setMode('ja-en')">🇯🇵→🇺🇸 日→英</button>
+  <button class="mode-btn" id="btnEnJa" onclick="setMode('en-ja')">🇺🇸→🇯🇵 英→日</button>
+</div>
+
+<div class="cat-scroll"><div class="cat-row" id="catRow"></div></div>
+
+<div class="progress-wrap">
+  <div class="progress-labels"><span id="pCount"></span><span id="pMaster"></span></div>
+  <div class="progress-track"><div class="progress-fill" id="pFill"></div></div>
+</div>
+
+<div class="card" id="card">
+  <span class="card-badge" id="cBadge"></span>
+  <button class="master-btn" id="masterBtn" onclick="toggleMastered()">☆</button>
+  <div class="front-area">
+    <div class="front-label" id="frontLabel"></div>
+    <div class="front-text" id="frontText"></div>
+    <button class="speak-btn" id="speakBtn" onclick="handleSpeak()">🔊 発音を聞く</button>
+  </div>
+  <hr class="divider" id="divider">
+  <div class="back-label" id="backLabel"></div>
+  <div class="input-row">
+    <input class="answer-input" id="answerInput" type="text" onkeydown="handleKeyDown(event)" oninput="handleInput()">
+    <button class="check-btn" id="checkBtn" onclick="handleCheck()">確認</button>
+  </div>
+  <div class="result-box" id="resultBox">
+    <span class="result-emoji" id="rEmoji"></span>
+    <div class="result-info">
+      <div class="result-title" id="rTitle"></div>
+      <div class="result-answer" id="rAnswer"></div>
+    </div>
+    <button class="speak-sm" id="speakSm" onclick="handleSpeak()">🔊</button>
+  </div>
+  <button class="show-ans-btn" id="showAnsBtn" onclick="toggleHint()">答えを見る</button>
+  <div class="answer-hint" id="answerHint">
+    <span id="hintText"></span>
+    <button class="speak-sm" id="speakHint" onclick="handleSpeak()">🔊</button>
+  </div>
+</div>
+
+<div class="nav-row">
+  <button class="nav-btn" onclick="goPrev()">◀</button>
+  <button class="nav-btn" onclick="goNext()">▶</button>
+</div>
+<button class="random-btn" onclick="goRandom()">🔀 ランダム</button>
+
+<div class="custom-section">
+  <button class="custom-toggle" onclick="toggleCustomList()">📝 追加した単語を見る / 削除</button>
+  <div class="custom-list" id="customList"></div>
+</div>
+
+<p class="hint-text">☆マスター済み ｜ Enter確認→次へ ｜ 🔊発音 ｜ ＋で単語追加</p>
+
+<button class="add-fab" onclick="openModal()" title="単語を追加">＋</button>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalBg(event)">
+  <div class="modal">
+    <h2>✏️ 単語を追加</h2>
+    <label>カテゴリを選ぶ</label>
+    <select id="modalCat"></select>
+    <div class="new-cat-row">
+      <input id="newCatInput" placeholder="新カテゴリ名（例: 動物）">
+      <button onclick="addNewCat()">＋追加</button>
+    </div>
+    <label>日本語</label>
+    <input id="modalJa" placeholder="例: 犬">
+    <label>英語</label>
+    <input id="modalEn" placeholder="例: Dog">
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="modal-save" onclick="saveWord()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== BUILTIN DATA =====
+const builtinCards = [
+  // 月
+  {ja:"1月",en:"January",category:"月"},{ja:"2月",en:"February",category:"月"},
+  {ja:"3月",en:"March",category:"月"},{ja:"4月",en:"April",category:"月"},
+  {ja:"5月",en:"May",category:"月"},{ja:"6月",en:"June",category:"月"},
+  {ja:"7月",en:"July",category:"月"},{ja:"8月",en:"August",category:"月"},
+  {ja:"9月",en:"September",category:"月"},{ja:"10月",en:"October",category:"月"},
+  {ja:"11月",en:"November",category:"月"},{ja:"12月",en:"December",category:"月"},
+  // 数字
+  {ja:"1",en:"One",category:"数字"},{ja:"2",en:"Two",category:"数字"},
+  {ja:"3",en:"Three",category:"数字"},{ja:"4",en:"Four",category:"数字"},
+  {ja:"5",en:"Five",category:"数字"},{ja:"6",en:"Six",category:"数字"},
+  {ja:"7",en:"Seven",category:"数字"},{ja:"8",en:"Eight",category:"数字"},
+  {ja:"9",en:"Nine",category:"数字"},{ja:"10",en:"Ten",category:"数字"},
+  {ja:"11",en:"Eleven",category:"数字"},{ja:"12",en:"Twelve",category:"数字"},
+  {ja:"13",en:"Thirteen",category:"数字"},{ja:"14",en:"Fourteen",category:"数字"},
+  {ja:"15",en:"Fifteen",category:"数字"},{ja:"16",en:"Sixteen",category:"数字"},
+  {ja:"17",en:"Seventeen",category:"数字"},{ja:"18",en:"Eighteen",category:"数字"},
+  {ja:"19",en:"Nineteen",category:"数字"},{ja:"20",en:"Twenty",category:"数字"},
+  {ja:"21",en:"Twenty-one",category:"数字"},{ja:"22",en:"Twenty-two",category:"数字"},
+  {ja:"23",en:"Twenty-three",category:"数字"},{ja:"24",en:"Twenty-four",category:"数字"},
+  {ja:"25",en:"Twenty-five",category:"数字"},{ja:"26",en:"Twenty-six",category:"数字"},
+  {ja:"27",en:"Twenty-seven",category:"数字"},{ja:"28",en:"Twenty-eight",category:"数字"},
+  {ja:"29",en:"Twenty-nine",category:"数字"},{ja:"30",en:"Thirty",category:"数字"},
+  {ja:"40",en:"Forty",category:"数字"},{ja:"50",en:"Fifty",category:"数字"},
+  {ja:"60",en:"Sixty",category:"数字"},{ja:"70",en:"Seventy",category:"数字"},
+  {ja:"80",en:"Eighty",category:"数字"},{ja:"90",en:"Ninety",category:"数字"},
+  {ja:"100",en:"One hundred",category:"数字"},{ja:"101",en:"One hundred and one",category:"数字"},
+  // 色
+  {ja:"赤",en:"Red",category:"色"},{ja:"青",en:"Blue",category:"色"},
+  {ja:"黄",en:"Yellow",category:"色"},{ja:"緑",en:"Green",category:"色"},
+  {ja:"橙",en:"Orange",category:"色"},{ja:"白",en:"White",category:"色"},
+  {ja:"黒",en:"Black",category:"色"},{ja:"茶",en:"Brown",category:"色"},
+  {ja:"紫",en:"Purple",category:"色"},{ja:"桃",en:"Pink",category:"色"},
+  {ja:"灰色",en:"Gray",category:"色"},
+  // 曜日
+  {ja:"月曜日",en:"Monday",category:"曜日"},{ja:"火曜日",en:"Tuesday",category:"曜日"},
+  {ja:"水曜日",en:"Wednesday",category:"曜日"},{ja:"木曜日",en:"Thursday",category:"曜日"},
+  {ja:"金曜日",en:"Friday",category:"曜日"},{ja:"土曜日",en:"Saturday",category:"曜日"},
+  {ja:"日曜日",en:"Sunday",category:"曜日"},
+  // 教科
+  {ja:"国語",en:"Japanese",category:"教科"},{ja:"数学",en:"Math",category:"教科"},
+  {ja:"英語",en:"English",category:"教科"},{ja:"理科",en:"Science",category:"教科"},
+  {ja:"社会",en:"Social Studies",category:"教科"},{ja:"音楽",en:"Music",category:"教科"},
+  {ja:"体育",en:"P.E.",category:"教科"},{ja:"美術",en:"Art",category:"教科"},
+  {ja:"家庭科",en:"Home Economics",category:"教科"},
+  // 日にち
+  {ja:"1日",en:"First",category:"日にち"},{ja:"2日",en:"Second",category:"日にち"},
+  {ja:"3日",en:"Third",category:"日にち"},{ja:"4日",en:"Fourth",category:"日にち"},
+  {ja:"5日",en:"Fifth",category:"日にち"},{ja:"6日",en:"Sixth",category:"日にち"},
+  {ja:"7日",en:"Seventh",category:"日にち"},{ja:"8日",en:"Eighth",category:"日にち"},
+  {ja:"9日",en:"Ninth",category:"日にち"},{ja:"10日",en:"Tenth",category:"日にち"},
+  {ja:"11日",en:"Eleventh",category:"日にち"},{ja:"12日",en:"Twelfth",category:"日にち"},
+  {ja:"13日",en:"Thirteenth",category:"日にち"},{ja:"14日",en:"Fourteenth",category:"日にち"},
+  {ja:"15日",en:"Fifteenth",category:"日にち"},{ja:"16日",en:"Sixteenth",category:"日にち"},
+  {ja:"17日",en:"Seventeenth",category:"日にち"},{ja:"18日",en:"Eighteenth",category:"日にち"},
+  {ja:"19日",en:"Nineteenth",category:"日にち"},{ja:"20日",en:"Twentieth",category:"日にち"},
+  {ja:"21日",en:"Twenty-first",category:"日にち"},{ja:"22日",en:"Twenty-second",category:"日にち"},
+  {ja:"23日",en:"Twenty-third",category:"日にち"},{ja:"24日",en:"Twenty-fourth",category:"日にち"},
+  {ja:"25日",en:"Twenty-fifth",category:"日にち"},{ja:"26日",en:"Twenty-sixth",category:"日にち"},
+  {ja:"27日",en:"Twenty-seventh",category:"日にち"},{ja:"28日",en:"Twenty-eighth",category:"日にち"},
+  {ja:"29日",en:"Twenty-ninth",category:"日にち"},{ja:"30日",en:"Thirtieth",category:"日にち"},
+  {ja:"31日",en:"Thirty-first",category:"日にち"},
+];
+
+const builtinCats = ["すべて","月","数字","色","曜日","教科","日にち"];
+const catAccents = {
+  すべて:"#e94560", 月:"#2196F3", 数字:"#FF8F00", 色:"#E91E63",
+  曜日:"#43A047", 教科:"#6A1B9A", 日にち:"#e65100"
+};
+const catBg = {
+  すべて:"#1e1e3a", 月:"#e8f4fd", 数字:"#fff8e1", 色:"#fce4ec",
+  曜日:"#e8f5e9", 教科:"#ede7f6", 日にち:"#fff3e0"
+};
+const catLight = {
+  すべて:"#333", 月:"#bbdefb", 数字:"#ffe082", 色:"#f8bbd0",
+  曜日:"#c8e6c9", 教科:"#d1c4e9", 日にち:"#ffe0b2"
+};
+function getAccent(cat){ return catAccents[cat]||"#3f51b5"; }
+function getBg(cat){ return catBg[cat]||"#f0f4ff"; }
+function getLight(cat){ return catLight[cat]||"#c5cae9"; }
+
+let customCards = [];
+let customCats = [];
+let selectedCategory = "すべて";
+let currentIndex = 0;
+let mode = "ja-en";
+let mastered = {};
+let result = null;
+let showHint = false;
+let speaking = false;
+
+function getAllCards(){ return [...builtinCards,...customCards]; }
+function getAllCats(){
+  const extra = customCats.filter(c=>!builtinCats.includes(c));
+  return [...builtinCats,...extra];
+}
+function getFiltered(){
+  const all=getAllCards();
+  return selectedCategory==="すべて"?all:all.filter(c=>c.category===selectedCategory);
+}
+function getCard(){ const f=getFiltered(); return f[currentIndex]||f[0]; }
+
+// TTS
+function playTTS(text){
+  const url=`https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=en-US&client=gtx&q=${encodeURIComponent(text)}`;
+  const audio=new Audio(url);
+  audio.volume=1.0;
+  const p=audio.play();
+  if(p!==undefined){
+    p.then(()=>{ audio.onended=()=>{ speaking=false; render(); }; })
+     .catch(()=>{
+       if(window.speechSynthesis){
+         window.speechSynthesis.cancel();
+         const u=new SpeechSynthesisUtterance(text);
+         u.lang="en-US"; u.rate=0.88;
+         u.onend=u.onerror=()=>{ speaking=false; render(); };
+         window.speechSynthesis.speak(u);
+       } else { speaking=false; render(); }
+     });
+  }
+}
+function handleSpeak(){
+  if(speaking)return;
+  speaking=true; render();
+  playTTS(getCard().en);
+  setTimeout(()=>{ speaking=false; render(); },6000);
+}
+
+function setMode(m){ mode=m; resetCard(); render(); }
+function setCategory(cat){ selectedCategory=cat; currentIndex=0; resetCard(); render(); }
+function resetCard(){ result=null; showHint=false; document.getElementById('answerInput').value=''; }
+function goNext(){ const f=getFiltered(); currentIndex=(currentIndex+1)%f.length; resetCard(); render(); }
+function goPrev(){ const f=getFiltered(); currentIndex=(currentIndex-1+f.length)%f.length; resetCard(); render(); }
+function goRandom(){ currentIndex=Math.floor(Math.random()*getFiltered().length); resetCard(); render(); }
+function handleInput(){ result=null; showHint=false; render(); }
+function handleKeyDown(e){ if(e.key==='Enter'){ if(result)goNext(); else handleCheck(); } }
+function handleCheck(){
+  const inp=document.getElementById('answerInput').value.trim();
+  if(!inp)return;
+  const correct=mode==='ja-en'?getCard().en:getCard().ja;
+  const norm=s=>s.toLowerCase().replace(/[-\s]+/g,' ').trim();
+  result=norm(inp)===norm(correct)?'correct':'wrong';
+  render();
+}
+function toggleMastered(){ const k=`${selectedCategory}-${currentIndex}`; mastered[k]=!mastered[k]; render(); }
+function toggleHint(){ showHint=!showHint; render(); }
+function toggleCustomList(){
+  const el=document.getElementById('customList');
+  el.classList.toggle('show');
+  renderCustomList();
+}
+
+// Modal
+function openModal(){
+  fillModalCats();
+  document.getElementById('modalJa').value='';
+  document.getElementById('modalEn').value='';
+  document.getElementById('newCatInput').value='';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('show'); }
+function closeModalBg(e){ if(e.target===document.getElementById('modalOverlay'))closeModal(); }
+function fillModalCats(){
+  const sel=document.getElementById('modalCat');
+  sel.innerHTML='';
+  getAllCats().filter(c=>c!=='すべて').forEach(cat=>{
+    const o=document.createElement('option');
+    o.value=cat; o.textContent=cat; sel.appendChild(o);
+  });
+}
+function addNewCat(){
+  const name=document.getElementById('newCatInput').value.trim();
+  if(!name)return;
+  if(!getAllCats().includes(name)) customCats.push(name);
+  fillModalCats();
+  document.getElementById('modalCat').value=name;
+  document.getElementById('newCatInput').value='';
+  render();
+}
+function saveWord(){
+  const ja=document.getElementById('modalJa').value.trim();
+  const en=document.getElementById('modalEn').value.trim();
+  const cat=document.getElementById('modalCat').value;
+  if(!ja||!en||!cat){ alert('すべて入力してください'); return; }
+  customCards.push({ja,en,category:cat});
+  closeModal();
+  renderCustomList();
+  render();
+}
+function deleteCustomWord(idx){
+  customCards.splice(idx,1);
+  renderCustomList();
+  const f=getFiltered();
+  if(currentIndex>=f.length) currentIndex=Math.max(0,f.length-1);
+  render();
+}
+function renderCustomList(){
+  const el=document.getElementById('customList');
+  if(customCards.length===0){
+    el.innerHTML='<div class="empty-msg">まだ追加した単語はありません<br>右下の ＋ から追加できます</div>';
+    return;
+  }
+  el.innerHTML=customCards.map((c,i)=>`
+    <div class="custom-item">
+      <div class="custom-item-text">
+        <div class="custom-item-ja">${c.ja} <span style="color:rgba(255,255,255,.4);font-size:11px;">→ ${c.en}</span></div>
+      </div>
+      <span class="custom-item-cat" style="background:${getAccent(c.category)}">${c.category}</span>
+      <button class="del-btn" onclick="deleteCustomWord(${i})">✕</button>
+    </div>`).join('');
+}
+
+// RENDER
+function render(){
+  const filtered=getFiltered();
+  if(!filtered.length)return;
+  const card=getCard();
+  const acc=getAccent(card.category);
+  const bg=getBg(card.category);
+  const light=getLight(card.category);
+  const isJaEn=mode==='ja-en';
+  const frontText=isJaEn?card.ja:card.en;
+  const correctAnswer=isJaEn?card.en:card.ja;
+  const isMastered=!!mastered[`${selectedCategory}-${currentIndex}`];
+  const masteredCount=filtered.filter((_,i)=>mastered[`${selectedCategory}-${i}`]).length;
+
+  // mode
+  document.getElementById('btnJaEn').className='mode-btn'+(mode==='ja-en'?' active':'');
+  document.getElementById('btnEnJa').className='mode-btn'+(mode==='en-ja'?' active':'');
+
+  // cats
+  const catRow=document.getElementById('catRow');
+  catRow.innerHTML='';
+  getAllCats().forEach(cat=>{
+    const btn=document.createElement('button');
+    btn.className='cat-btn'+(selectedCategory===cat?' active':'');
+    btn.textContent=cat;
+    if(selectedCategory===cat){ btn.style.background=getAccent(cat); btn.style.borderColor=getAccent(cat); }
+    btn.onclick=()=>setCategory(cat);
+    catRow.appendChild(btn);
+  });
+
+  // progress
+  document.getElementById('pCount').textContent=`${currentIndex+1} / ${filtered.length}枚`;
+  document.getElementById('pMaster').textContent=`⭐ ${masteredCount}/${filtered.length}`;
+  const pf=document.getElementById('pFill');
+  pf.style.width=`${((currentIndex+1)/filtered.length)*100}%`;
+  pf.style.background=acc;
+
+  // card
+  const cardEl=document.getElementById('card');
+  cardEl.style.background=bg;
+  cardEl.style.border=`2px solid ${light}`;
+  document.getElementById('cBadge').textContent=card.category;
+  document.getElementById('cBadge').style.background=acc;
+  const mb=document.getElementById('masterBtn');
+  mb.textContent=isMastered?'⭐':'☆';
+  mb.className='master-btn'+(isMastered?' on':'');
+
+  // front
+  document.getElementById('frontLabel').textContent=isJaEn?'🇯🇵 日本語（表）':'🇺🇸 英語（表）';
+  const fte=document.getElementById('frontText');
+  fte.textContent=frontText;
+  fte.style.fontSize=frontText.length>14?'26px':frontText.length>8?'36px':frontText.length>4?'46px':'54px';
+
+  // speak
+  const sb=document.getElementById('speakBtn');
+  sb.style.background=speaking?acc:'rgba(0,0,0,.07)';
+  sb.style.borderColor=speaking?acc:light;
+  sb.style.color=speaking?'#fff':acc;
+  sb.textContent=speaking?'🔊 再生中...':'🔊 発音を聞く';
+
+  document.getElementById('divider').style.borderColor=light;
+  document.getElementById('backLabel').textContent=isJaEn?'🇺🇸 英語を入力（裏）':'🇯🇵 日本語を入力（裏）';
+
+  const inp=document.getElementById('answerInput');
+  inp.placeholder=isJaEn?'英語を入力...':'日本語を入力...';
+  inp.style.borderColor=result==='correct'?'#43A047':result==='wrong'?'#e94560':light;
+  inp.style.background=result==='correct'?'#e8f5e9':result==='wrong'?'#fff0f2':'#fff';
+  document.getElementById('checkBtn').style.background=acc;
+
+  // result
+  const rb=document.getElementById('resultBox');
+  if(result){
+    rb.className='result-box show';
+    rb.style.background=result==='correct'?'#e8f5e9':'#fff0f2';
+    rb.style.borderColor=result==='correct'?'#43A047':'#e94560';
+    document.getElementById('rEmoji').textContent=result==='correct'?'🎉':'❌';
+    document.getElementById('rTitle').textContent=result==='correct'?'正解！':'不正解...';
+    document.getElementById('rTitle').style.color=result==='correct'?'#2e7d32':'#c62828';
+    document.getElementById('rAnswer').innerHTML=`正解: <strong>${correctAnswer}</strong>`;
+    document.getElementById('speakSm').style.background=acc;
+  } else { rb.className='result-box'; }
+
+  const sab=document.getElementById('showAnsBtn');
+  sab.style.color=acc;
+  sab.style.display=result?'none':'block';
+  sab.textContent=showHint?'答えを隠す':'答えを見る';
+
+  const ah=document.getElementById('answerHint');
+  if(showHint&&!result){
+    ah.className='answer-hint show';
+    ah.style.background=light;
+    document.getElementById('hintText').textContent=`💡 ${correctAnswer}`;
+    document.getElementById('speakHint').style.background=acc;
+  } else { ah.className='answer-hint'; }
+}
+
+render();
+document.getElementById('answerInput').focus();
+</script>
+</body>
+</html>
